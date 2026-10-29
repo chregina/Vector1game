@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מי רוצה להיות מיליונר - ווקטורים</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- הגדרות ל- MathJax על מנת שיזהה את תגיות ה-$ בנוסחאות התשובות -->
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']]
+            },
+            startup: {
+                typeset: false
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+        body {
+            background: radial-gradient(circle, #0f172a 0%, #020617 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        .gold-border {
+            border: 2px solid #eab308;
+            box-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
+        }
+
+        .game-btn {
+            background: linear-gradient(180deg, #1e3a8a 0%, #172554 100%);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .game-btn:hover:not(:disabled) {
+            background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.8);
+            cursor: pointer;
+        }
+
+        .game-btn.selected {
+            background: linear-gradient(180deg, #d97706 0%, #b45309 100%) !important;
+            border-color: #fcd34d !important;
+        }
+
+        .game-btn.correct {
+            background: linear-gradient(180deg, #16a34a 0%, #15803d 100%) !important;
+            border-color: #86efac !important;
+            animation: pulse-green 1s infinite;
+        }
+
+        .game-btn.wrong {
+            background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%) !important;
+            border-color: #fca5a5 !important;
+        }
+
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(22, 163, 74, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+        }
+
+        .ladder-item {
+            transition: all 0.3s ease;
+        }
+        
+        .ladder-item.active {
+            background-color: #eab308;
+            color: #000;
+            font-weight: bold;
+            border-radius: 4px;
+        }
+        
+        .ladder-item.passed {
+            color: #eab308;
+        }
+
+        .hidden-option {
+            visibility: hidden;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col items-center">
+
+    <!-- מסך פתיחה -->
+    <div id="start-screen" class="flex flex-col items-center justify-center min-h-screen w-full p-4">
+        <div class="w-48 h-48 rounded-full gold-border flex items-center justify-center bg-blue-900 mb-8 shadow-2xl">
+            <h1 class="text-4xl font-bold text-center text-yellow-500 leading-tight">מי רוצה<br>להיות<br>מיליונר</h1>
+        </div>
+        
+        <h2 class="text-4xl font-bold mb-2 text-yellow-400">הנושא: ווקטורים</h2>
+        <h3 class="text-2xl font-semibold mb-6">הוכן על ידי רגינה צ'ולסקי</h3>
+        
+        <p class="text-gray-300 mb-10 text-center max-w-lg">ענו נכונה על 10 שאלות, הוכיחו את הידע שלכם בווקטורים גיאומטריים ואלגבריים, וזכו במיליון שקלים וירטואליים!</p>
+        
+        <button onclick="startGame()" class="px-10 py-4 text-2xl font-bold rounded-full gold-border game-btn shadow-[0_0_20px_rgba(234,179,8,0.4)]">
+            התחל משחק
+        </button>
+    </div>
+
+    <!-- מסך משחק -->
+    <div id="game-screen" class="hidden w-full max-w-7xl mx-auto flex flex-col lg:flex-row h-screen p-4 gap-6">
+        
+        <!-- אזור מרכזי: שאלות ותשובות -->
+        <div class="flex-1 flex flex-col justify-end lg:justify-center relative gap-4">
+            
+            <!-- עזרים (גלגל הצלה) -->
+            <div class="flex justify-center mb-4 space-x-4 space-x-reverse">
+                <button id="btn-5050" onclick="useFiftyFifty()" class="w-16 h-12 rounded-full gold-border game-btn font-bold text-lg flex items-center justify-center" title="50:50">
+                    50:50
+                </button>
+            </div>
+
+            <!-- קופסת השאלה (מציגה את התמונה) -->
+            <div id="question-box" class="w-full min-h-[200px] gold-border game-btn rounded-3xl flex items-center justify-center p-6 text-center text-xl lg:text-2xl font-medium mb-4">
+                <span id="question-text">טוען שאלה...</span>
+            </div>
+
+            <!-- אזור התשובות -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                <button id="opt-0" onclick="selectOption(0)" class="w-full min-h-[80px] gold-border game-btn rounded-full flex items-center p-4 text-lg lg:text-xl">
+                    <span class="text-yellow-500 font-bold ml-4 text-2xl">א:</span>
+                    <span id="text-0" class="flex-1 text-right">תשובה</span>
+                </button>
+                <button id="opt-1" onclick="selectOption(1)" class="w-full min-h-[80px] gold-border game-btn rounded-full flex items-center p-4 text-lg lg:text-xl">
+                    <span class="text-yellow-500 font-bold ml-4 text-2xl">ב:</span>
+                    <span id="text-1" class="flex-1 text-right">תשובה</span>
+                </button>
+                <button id="opt-2" onclick="selectOption(2)" class="w-full min-h-[80px] gold-border game-btn rounded-full flex items-center p-4 text-lg lg:text-xl">
+                    <span class="text-yellow-500 font-bold ml-4 text-2xl">ג:</span>
+                    <span id="text-2" class="flex-1 text-right">תשובה</span>
+                </button>
+                <button id="opt-3" onclick="selectOption(3)" class="w-full min-h-[80px] gold-border game-btn rounded-full flex items-center p-4 text-lg lg:text-xl">
+                    <span class="text-yellow-500 font-bold ml-4 text-2xl">ד:</span>
+                    <span id="text-3" class="flex-1 text-right">תשובה</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- סולם פרסים צדדי (למסכים רחבים) -->
+        <div class="lg:w-64 flex flex-col justify-center bg-blue-900/50 p-4 rounded-xl border border-blue-800 hidden lg:flex">
+            <div class="flex flex-col-reverse space-y-2 space-y-reverse w-full text-right" id="prize-ladder">
+                <!-- ייבנה ב-JS -->
+            </div>
+        </div>
+        
+        <!-- סולם פרסים עליון במובייל -->
+        <div class="w-full bg-blue-900/80 p-3 rounded-lg border border-blue-800 lg:hidden flex justify-between items-center fixed top-0 left-0 right-0 z-10 text-lg font-bold">
+            <span class="text-yellow-400">שאלה <span id="mobile-q-num">1</span>/10</span>
+            <span class="text-white" id="mobile-prize">₪ 1,000</span>
+        </div>
+    </div>
+
+    <!-- מסך סיום / ניצחון -->
+    <div id="end-screen" class="hidden fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-50 p-4">
+        <h1 id="end-title" class="text-5xl font-bold mb-6 text-center">המשחק נגמר!</h1>
+        <p id="end-subtitle" class="text-2xl mb-8 text-center text-yellow-400">הרווחת 0 שקלים.</p>
+        <button onclick="location.reload()" class="px-8 py-3 text-xl font-bold rounded-full gold-border game-btn">
+            שחק שוב
+        </button>
+    </div>
+
+    <script>
+        // הודעת שגיאה במקרה שהתמונה לא פתוחה לשיתוף
+        const imgErrorMsg = "this.outerHTML='<div class=\\'text-red-500 bg-white p-4 rounded-xl text-center shadow-lg\\'><b>התמונה לא נטענה.</b><br>יש לוודא שהקישור בדרייב מוגדר כפתוח לכולם (Anyone with the link).</div>'";
+
+        // מאגר השאלות
+        const questions = [
+            {
+                q: `<img src="https://drive.google.com/thumbnail?id=1xTUeF89ENx4QAV5lcL02q7Y-nwdZCjmg&sz=w800" onerror="${imgErrorMsg}" alt="שאלה 1" class="max-h-[250px] lg:max-h-[300px] w-auto mx-auto object-contain bg-white p-2 rounded-xl">`,
+                options: ["טענה 1 נכונה", "טענה 2 נכונה", "שתיהן נכונות", "שתיהן שגויות"],
+                answer: 1 // ב (2)
+            },
+            {
+                q: `<img src="https://drive.google.com/thumbnail?id=1PPiKayDZdCs8S_2HgS1-uRZKcJgS1U8p&sz=w800" onerror="${imgErrorMsg}" alt="שאלה 2" class="max-h-[250px] lg:max-h-[300px] w-auto mx-auto object-contain bg-white p-2 rounded-xl">`,
+                options: ["$A$", "$B'$", "$C'$", "$D$"],
+                answer: 1 // ב (2)
+            },
+            {
+                q: `<img src="https://drive.google.com/thumbnail?id=12TIWfhbbmJp-WyNb1llusWESgNPuWAZ2&sz=w800" onerror="${imgErrorMsg}" alt="שאלה 3" class="max-h-[250px] lg:max-h-[300px] w-auto mx-auto object-contain bg-white p-2 rounded-xl">`,
+                options: ["$\\frac{1}{2}\\underline{u} - \\underline{v} + \\frac{1}{2}\\underline{w}$", "$\\frac{1}{2}\\underline{u} + \\underline{v} - \\frac{1}{2}\\underline{w}$", "$\\frac{1}{2}\\underline{u} + \\underline{v} + \\frac{1}{2}\\underline{w}$", "$\\underline{u} + \\underline{v} + \\frac{1}{2}\\underline{w}$"],
+                answer: 2 // ג (3)
+            },
+            {
+                q: `<img src="https://drive.google.com/thumbnail?id=1ekS5Fdr0YupNNY4m4egeP8StGSbMHPmr&sz=w800" onerror="${imgErrorMsg}" alt="שאלה 4" class="max-h-[250px] lg:max-h-[300px] w-auto mx-auto object-contain bg-white p-2 rounded-xl">`,
+                options: ["3:2", "5:2", "5:3", "4:1"],
+                answer: 3 // ד (4)
+            },
+            {
+                q: `<img src="https://drive.google.com/thumbnail?id=1Pv7LwPkavP4wBXa75g89A8T8vykiUIl4&sz=w800" onerror="${imgErrorMsg}" alt="שאלה 5" class="max-h-[250px] lg:max-h-[300px] w-auto mx-auto object-contain bg-white p-2 rounded-xl">`,
+                options: ["$\\sqrt{19}$", "4", "5", "$\\sqrt{17}$"],
+                answer: 0 // א (1)
+            },
+            {
+                q: `<img src="https://drive.google.com/thumbnail?id=1WNjLUuuRV9R19rrU6d0fFEOJuqA-Fbw8&sz=w800" onerror="${imgErrorMsg}" alt="שאלה 6" class="max-h-[250px] lg:max-h-[300px] w-auto mx-auto object-contain bg-white p-2 rounded-xl">`,
+                options: ["$(5,1,7)$", "$(4,6,-2)$", "$(4,2,3)$", "$(1,5,2)$"],
+                answer: 2 // ג (3)
+            },
+            {
+                q: `<img src="https://drive.google.com/thumbnail?id=1PFgqKbQEIiSfc07hTsQgk98-J9eNGAXk&sz=w800" onerror="${imgErrorMsg}" alt="שאלה 7" class="max-h-[250px] lg:max-h-[300px] w-auto mx-auto object-contain bg-white p-2 rounded-xl">`,
+                options: ["$(5,1,7)$", "$(4,6,-2)$", "$(4,2,3)$", "$(1,5,2)$"],
+                answer: 1 // ב (2)
+            },
+            {
+                q: `<img src="https://drive.google.com/thumbnail?id=1yVJzNryhUwUL7lGwvktz-CrduJ5XNPyH&sz=w800" onerror="${imgErrorMsg}" alt="שאלה 8" class="max-h-[250px] lg:max-h-[300px] w-auto mx-auto object-contain bg-white p-2 rounded-xl">`,
+                options: ["$56.79^{\\circ}$", "$60^{\\circ}$", "$50.77^{\\circ}$", "$90^{\\circ}$"],
+                answer: 3 // ד (4)
+            },
+            {
+                q: `<img src="https://drive.google.com/thumbnail?id=1FcmjdNHHx0oHF66Vw4EMR8-wt5SAV8br&sz=w800" onerror="${imgErrorMsg}" alt="שאלה 9" class="max-h-[250px] lg:max-h-[300px] w-auto mx-auto object-contain bg-white p-2 rounded-xl">`,
+                options: ["$\\sqrt{45}$", "$\\sqrt{27}$", "108", "61.967"],
+                answer: 2 // ג (3)
+            },
+            {
+                q: `<img src="https://drive.google.com/thumbnail?id=1mVojUoaDMibh2JXmWwi5htzNiPgm0JJJ&sz=w800" onerror="${imgErrorMsg}" alt="שאלה 10" class="max-h-[250px] lg:max-h-[300px] w-auto mx-auto object-contain bg-white p-2 rounded-xl">`,
+                options: ["50.59", "128", "96.52", "12.8"],
+                answer: 1 // ב (2)
+            }
+        ];
+
+        const prizes = [
+            "₪ 1,000", "₪ 2,000", "₪ 5,000", "₪ 10,000", "₪ 20,000", 
+            "₪ 50,000", "₪ 100,000", "₪ 250,000", "₪ 500,000", "₪ 1,000,000"
+        ];
+
+        let currentQIndex = 0;
+        let isAnswering = false;
+        let fiftyFiftyUsed = false;
+        let guaranteedPrize = "₪ 0";
+
+        // רנדור סולם הפרסים
+        function renderLadder() {
+            const ladderHtml = prizes.map((prize, index) => {
+                const num = index + 1;
+                let classes = "ladder-item px-4 py-1 text-lg flex justify-between";
+                if (index === currentQIndex) {
+                    classes += " active";
+                } else if (index < currentQIndex) {
+                    classes += " passed text-yellow-500";
+                } else {
+                    classes += " text-gray-400";
+                }
+
+                // תחנות בטוחות (שאלה 5, 10)
+                if (index === 4 || index === 9) {
+                    classes += " font-bold";
+                    if (index > currentQIndex) classes = classes.replace('text-gray-400', 'text-white');
+                }
+
+                return `<div class="${classes}">
+                    <span>${num}</span>
+                    <span dir="ltr">${prize}</span>
+                </div>`;
+            }).join('');
+            
+            document.getElementById('prize-ladder').innerHTML = ladderHtml;
+            document.getElementById('mobile-q-num').innerText = currentQIndex + 1;
+            document.getElementById('mobile-prize').innerText = prizes[currentQIndex];
+        }
+
+        // התחלת משחק
+        function startGame() {
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            
+            // עיבוד ראשוני למתמטיקה (אם קיימת)
+            if (window.MathJax) {
+                MathJax.typesetPromise();
+            }
+            
+            loadQuestion();
+        }
+
+        // טעינת שאלה נוכחית
+        function loadQuestion() {
+            if (currentQIndex >= questions.length) {
+                showWinScreen();
+                return;
+            }
+
+            isAnswering = false;
+            const q = questions[currentQIndex];
+            
+            // איפוס עיצובים
+            for(let i=0; i<4; i++) {
+                const btn = document.getElementById(`opt-${i}`);
+                btn.className = "w-full min-h-[80px] gold-border game-btn rounded-full flex items-center p-4 text-lg lg:text-xl";
+                btn.disabled = false;
+                document.getElementById(`text-${i}`).innerHTML = q.options[i];
+            }
+
+            document.getElementById('question-text').innerHTML = q.q;
+            renderLadder();
+
+            // רנדור ביטויים מתמטיים מחדש
+            if (window.MathJax) {
+                MathJax.typesetPromise([document.getElementById('game-screen')]).catch((err) => console.log(err.message));
+            }
+        }
+
+        // בחירת תשובה
+        function selectOption(selectedIndex) {
+            if (isAnswering) return;
+            isAnswering = true;
+
+            const selectedBtn = document.getElementById(`opt-${selectedIndex}`);
+            const correctIndex = questions[currentQIndex].answer;
+            const correctBtn = document.getElementById(`opt-${correctIndex}`);
+
+            // נעל כפתורים
+            for(let i=0; i<4; i++) {
+                document.getElementById(`opt-${i}`).disabled = true;
+            }
+
+            // צבע בחירה בכתום
+            selectedBtn.classList.add('selected');
+
+            // השהיה לפני בדיקה למתח
+            setTimeout(() => {
+                selectedBtn.classList.remove('selected');
+
+                if (selectedIndex === correctIndex) {
+                    // תשובה נכונה
+                    selectedBtn.classList.add('correct');
+                    
+                    // עדכון פרס מובטח
+                    if (currentQIndex === 4) guaranteedPrize = prizes[4]; // הבטחת 20,000 ש"ח
+                    
+                    setTimeout(() => {
+                        currentQIndex++;
+                        loadQuestion();
+                    }, 2500);
+                } else {
+                    // תשובה שגויה
+                    selectedBtn.classList.add('wrong');
+                    correctBtn.classList.add('correct'); // הצגת התשובה הנכונה
+                    
+                    setTimeout(() => {
+                        showGameOverScreen();
+                    }, 3000);
+                }
+            }, 2000);
+        }
+
+        // הפעלת גלגל הצלה 50:50
+        function useFiftyFifty() {
+            if (fiftyFiftyUsed || isAnswering) return;
+            
+            fiftyFiftyUsed = true;
+            const btn5050 = document.getElementById('btn-5050');
+            btn5050.classList.add('opacity-50', 'cursor-not-allowed');
+            btn5050.onclick = null;
+            btn5050.innerText = "X";
+
+            const correctIndex = questions[currentQIndex].answer;
+            let hiddenCount = 0;
+            const indicesToHide = [];
+
+            // בחירת 2 אינדקסים שגויים אקראיים להסתרה
+            while (hiddenCount < 2) {
+                const r = Math.floor(Math.random() * 4);
+                if (r !== correctIndex && !indicesToHide.includes(r)) {
+                    indicesToHide.push(r);
+                    hiddenCount++;
+                }
+            }
+
+            indicesToHide.forEach(idx => {
+                const btn = document.getElementById(`opt-${idx}`);
+                btn.classList.add('hidden-option');
+            });
+        }
+
+        // מסך הפסד
+        function showGameOverScreen() {
+            document.getElementById('game-screen').classList.add('hidden');
+            const endScreen = document.getElementById('end-screen');
+            endScreen.classList.remove('hidden');
+            
+            document.getElementById('end-title').innerText = "אוי, תשובה שגויה!";
+            document.getElementById('end-title').className = "text-5xl font-bold mb-6 text-center text-red-500";
+            
+            let finalPrize = currentQIndex === 0 ? "0 שקלים" : guaranteedPrize;
+            // אם עבר את תחנה 5 אבל נפל לפני 10, מקבל את תחנה 5
+            if (currentQIndex >= 5) finalPrize = prizes[4];
+            // אם נפל לפני שאלה 5
+            if (currentQIndex < 5) finalPrize = "0 שקלים";
+
+            document.getElementById('end-subtitle').innerText = `חבל... הרווחת סך הכל: ${finalPrize}`;
+        }
+
+        // מסך ניצחון
+        function showWinScreen() {
+            document.getElementById('game-screen').classList.add('hidden');
+            const endScreen = document.getElementById('end-screen');
+            endScreen.classList.remove('hidden');
+            
+            document.getElementById('end-title').innerText = "כל הכבוד מיליונר!";
+            document.getElementById('end-title').className = "text-6xl font-bold mb-6 text-center text-yellow-400";
+            document.getElementById('end-subtitle').innerText = "ענית נכונה על כל השאלות וזכית במיליון שקלים!";
+        }
+    </script>
+</body>
+</html>
